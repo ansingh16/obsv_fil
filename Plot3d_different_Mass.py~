@@ -1,0 +1,113 @@
+import eagleSqlTools as sql
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+# Array of chosen simulations. Entries refer to the simulation name and comoving box length.
+mySims		= np.array([('RefL0050N0752', 50.)])
+
+# This uses the eagleSqlTools module to connect to the database with your username and password.
+# If the password is not given, the module will prompt for it.
+con     	= sql.connect("asingh", password="GFB4ejc2")
+
+
+
+for sim_name, sim_size in mySims:
+
+        print sim_name
+    
+	# Construct and execute query for each simulation. This query returns the number of galaxies 
+	# for a given 30 pkpc aperture stellar mass bin (centered with 0.2 dex width). 
+        myQuery = "SELECT *\
+			FROM \
+			    %s_FOF as MH \
+            WHERE \
+			    MH.Group_M_Crit200 > 1e6 and \
+			    MH.SnapNum = 27 \
+		    ORDER BY \
+			    MH.Group_M_Crit200 "%(sim_name)
+	
+	# Execute query.
+        myData_6 	= sql.execute_query(con, myQuery)
+
+        np.savetxt("Data1.csv", myData_6)
+
+        x = 'GroupCentreOfPotential_x'
+        y = 'GroupCentreOfPotential_y'
+        z = 'GroupCentreOfPotential_z'
+
+        ax.scatter(myData_6[x], myData_6[y],myData_6[z], label=sim_name, s=1.0)
+        ax.set_xlabel('x(cMpc)',fontweight='bold')
+        ax.set_ylabel('y(cMpc)',fontweight='bold')
+        ax.set_zlabel('z(cMpc)',fontweight='bold')
+
+        myQuery = "SELECT \
+        			GroupCentreOfPotential_x as x, \
+                                GroupCentreOfPotential_y as y, \
+                                GroupCentreOfPotential_z as z, \
+                                MH.Group_M_Crit200 as mass \
+                    FROM \
+        			    %s_FOF as MH \
+                    WHERE \
+        			    MH.Group_M_Crit200 > 1e13 and \
+        			    MH.SnapNum = 27 \
+        		    ORDER BY \
+        			    mass" % (sim_name)
+
+        # Execute query.
+        myData_13 	= sql.execute_query(con, myQuery)
+
+        np.savetxt("Data2.csv", myData_13)
+
+
+        ax.scatter(myData_13['x'], myData_13['y'],myData_13['z'],color='r', label=sim_name, s=25.0)
+        ax.set_xlabel('x(cMpc)',fontweight='bold')
+        ax.set_ylabel('y(cMpc)',fontweight='bold')
+        ax.set_zlabel('z(cMpc)',fontweight='bold')
+
+plt.tight_layout()
+plt.legend()
+plt.savefig('test.png')
+
+Data6 = np.zeros((myData_6.shape[0],3),dtype=np.float64)
+Data6[:,0] = myData_6[x]
+Data6[:,1] = myData_6[y]
+Data6[:,2] = myData_6[z]
+'''
+Data6 = np.zeros((len(myData_6),3),dtype=np.float64)
+i=0
+for pos in myData_6:
+    Data6[i,0],Data6[i,1],Data6[i,2] = pos[3],pos[4],pos[5]
+    i=i+1
+'''
+Data13 = np.zeros((len(myData_13),3),dtype=np.float64)
+i=0
+for pos in myData_13:
+    Data13[i,0],Data13[i,1],Data13[i,2] = pos[0],pos[1],pos[2]
+    i=i+1
+
+bin_list = np.arange(0.5,max(Data6[:,2]),2.0)
+
+for i in range(len(bin_list)-1):
+
+
+    slice_Data6 = Data6[(Data6[:,2]>=bin_list[i])&(Data6[:,2]<=bin_list[i+1])]
+    slice_Data13 = Data13[(Data13[:,2]>=bin_list[i])&(Data13[:,2]<=bin_list[i+1])]
+
+    print i,bin_list[i],max(Data6[:,2])
+    #print slice_Data13.shape,slice_Data6.shape
+
+    if(slice_Data13.shape[0]>1):
+
+        np.savetxt('SLICE_DATA'+str(i)+'.dat',slice_Data6)
+        fig2 = plt.figure()
+        plt.scatter(slice_Data6[:,0],slice_Data6[:,1], label=sim_name, s=1.0)
+        plt.scatter(slice_Data13[:,0],slice_Data13[:,1], color='r', label=sim_name, s=25.0)
+        plt.savefig('sliceno'+str(i)+'.png')
+        fig2.clear()
+
+fig.show()
