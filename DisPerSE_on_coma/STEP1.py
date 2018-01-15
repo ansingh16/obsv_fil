@@ -77,67 +77,71 @@ for j in range(1, len(lines)):
 
 fp.close()
 
-fig2,ax2 = plt.subplots(1,1,figsize=(8,6))
-ax2.set_xlim(max(file_RADEC_array[:,0]),min(file_RADEC_array[:,0]))
-ax2.set_ylim(min(file_RADEC_array[:, 1]), max(file_RADEC_array[:, 1]))
-ax2.set_xlabel('RA')
-ax2.set_ylabel('DEC')
-
-ax2.scatter(file_RADEC_array[:,0],file_RADEC_array[:,1],s=1.5,color='red',alpha=0.6)
-
-with open('clipped_file.dat','w') as cf:
-    for f in range(1, int(lines[0]) + 1):
-        file = 'filament_' + str(f) + '.dat'
-        data = np.loadtxt(file)
-
-        ax2.plot(data[:,0],data[:,1],linewidth=2.5,color='black')
-
-        if(max(data[:,0])<max(file_RADEC_array[:,0]) and min(data[:,0])>min(file_RADEC_array[:,0]) and \
-                       max(data[:,1])<max(file_RADEC_array[:,1]) and min(data[:,1])>min(file_RADEC_array[:,1])):
-
-            cf.write(file+'\n')
-
-
-clip_files = np.loadtxt('clipped_file.dat',dtype = np.string_)
-
-
-fig1,ax1 = plt.subplots(1,1,figsize=(8,6))
+fig1,ax1 = plt.subplots(1,1,figsize=(10,6))
 ax1.set_xlim(max(file_RADEC_array[:,0]),min(file_RADEC_array[:,0]))
 ax1.set_ylim(min(file_RADEC_array[:, 1]), max(file_RADEC_array[:, 1]))
 ax1.set_xlabel('RA')
 ax1.set_ylabel('DEC')
-ax1.scatter(file_RADEC_array[:,0],file_RADEC_array[:,1],s=1.5,color='red',alpha=0.6)
+ax1.scatter(file_RADEC_array[:,0],file_RADEC_array[:,1],s=1.5,color='teal',alpha=0.6)
+
+import matplotlib
+parameters = np.linspace(0,10,11)
+# norm is a class which, when called, can normalize data into the
+# [0.0, 1.0] interval.
+norm = matplotlib.colors.Normalize(
+    vmin=np.min(parameters),
+    vmax=np.max(parameters))
+
+# choose a colormap
+c_m = matplotlib.cm.magma
+
+# create a ScalarMappable and initialize a data structure
+s_m = matplotlib.cm.ScalarMappable(cmap=c_m, norm=norm)
+s_m.set_array([])
 
 
+import os
+os.remove("Distances60.dat")
 
-for f in range(0,len(clip_files)):
-        file = clip_files[f]
+
+for f in range(1,int(lines[0])+1):
+        file = 'filament_' + str(f) + '.dat'
         print file
         data = np.genfromtxt(file,delimiter=' ')
         #plt.plot(data[:,0],data[:,1])
-        lenght_dist=[]
         #print file
         RA_fil = data[:,0]
         DEC_fil = data[:,1]
-        
+        lenght_dist=[]
         length = 0.0
         for i in range(len(RA_fil)-1):
             c1 = SkyCoord(ra=RA_fil[i] * u.degree, dec=DEC_fil[i] * u.degree, distance=C)
             c2 = SkyCoord(ra=RA_fil[i+1] * u.degree, dec=DEC_fil[i+1] * u.degree, distance=C)
 
-            lenght_dist.append(c1.separation_3d(c2).value)
             length += c1.separation_3d(c2)
-        
+
+        lenght_dist.append(length.value)
+
         with open("Distances60.dat",'a') as dist_file:
             dist_file.write(str(length.value)+'\n')
 
 
+        ind = int(length.value)/5
+        #print ind
+        temp = ax1.plot(data[:,0],data[:,1],linewidth=1.5,color=s_m.to_rgba(ind))
+        #cmap = plt.cm.get_cmap(c)
 
-        ax1.plot(data[:,0],data[:,1],linewidth=2.5,color='black')
+
+colorbar_ax = fig1.add_axes([0.92, 0.1, 0.01, 0.8])
+cbar = plt.colorbar(s_m,cax=colorbar_ax)
+cbar.set_label('Length(Mpc)')
+plt.minorticks_on()
+#plt.tight_layout()
+
+L = np.loadtxt('Distances60.dat')
 
 
 
-fig1.savefig('clipped_filaments.png',dpi=600)
-fig2.savefig('all_filaments.png',dpi=600)
+fig1.savefig('filaments_with_galaxies.png',dpi=600)
 
 plt.show()
