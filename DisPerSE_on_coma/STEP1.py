@@ -47,7 +47,23 @@ with open(FILAMENT_FILE) as infile, open('FILAMENTS'+'.dat','w') as outfile:
             
         #outfile.close()
         #print line
-        
+
+with open(FILAMENT_FILE) as infile, open('Critical_Points' + '.dat', 'w') as outfile:
+    copy = False
+    for line in infile:
+        if line.strip() == "[CRITICAL POINTS]":
+            copy = True
+        elif line.strip() == "[FILAMENTS]":
+            copy = False
+        elif copy:
+            #print line.split(' ')
+            if (not line.startswith(' ')):
+                if(len(line)>10):
+                    outfile.write('%d,%0.6f,%0.6f\n'%(int(line.split(' ')[0]),float(line.split(' ')[1]),float(line.split(' ')[2])))
+
+
+outfile.close()
+
 fil_file = open('FILAMENTS'+'.dat', 'r')
 
 lines = fil_file.readlines()
@@ -82,7 +98,7 @@ ax1.set_xlim(max(file_RADEC_array[:,0]),min(file_RADEC_array[:,0]))
 ax1.set_ylim(min(file_RADEC_array[:, 1]), max(file_RADEC_array[:, 1]))
 ax1.set_xlabel('RA')
 ax1.set_ylabel('DEC')
-ax1.scatter(file_RADEC_array[:,0],file_RADEC_array[:,1],s=1.5,color='teal',alpha=0.6)
+ax1.scatter(file_RADEC_array[:,0],file_RADEC_array[:,1],s=1.5,color='black',alpha=0.3)
 
 import matplotlib
 parameters = np.linspace(0,10,11)
@@ -100,8 +116,21 @@ s_m = matplotlib.cm.ScalarMappable(cmap=c_m, norm=norm)
 s_m.set_array([])
 
 
-import os
-os.remove("Distances60.dat")
+from pathlib import Path
+
+my_file = Path("./Distances60.dat")
+if my_file.is_file():
+    import os
+
+    os.remove("Distances60.dat")
+
+
+
+c_m = matplotlib.cm.magma
+
+# create a ScalarMappable and initialize a data structure
+s_m = matplotlib.cm.ScalarMappable(cmap=c_m, norm=norm)
+s_m.set_array([])
 
 
 for f in range(1,int(lines[0])+1):
@@ -126,16 +155,32 @@ for f in range(1,int(lines[0])+1):
             dist_file.write(str(length.value)+'\n')
 
 
-        ind = int(length.value)/5
-        #print ind
-        temp = ax1.plot(data[:,0],data[:,1],linewidth=1.5,color=s_m.to_rgba(ind))
-        #cmap = plt.cm.get_cmap(c)
+        if length.value>10.0:
+
+            ind = int(length.value)/5
+
+            temp=ax1.plot(data[:, 0], data[:, 1], linewidth=1.5, color=s_m.to_rgba(ind))
 
 
-colorbar_ax = fig1.add_axes([0.92, 0.1, 0.01, 0.8])
-cbar = plt.colorbar(s_m,cax=colorbar_ax)
-cbar.set_label('Length(Mpc)')
+data_crit = np.loadtxt('Critical_Points.dat',delimiter=',')
+
+#colorbar_ax = fig1.add_axes([0.92, 0.1, 0.01, 0.8])
+#cbar = plt.colorbar(s_m,cax=colorbar_ax)
+#cbar.set_label('Length(Mpc)')
+for i in range(data_crit.shape[0]):
+    if(data_crit[i,0]==2.0):
+        ax1.scatter(data_crit[i,1],data_crit[i,2],s=25,color='red')
+
+    if (data_crit[i, 0] == 3.0):
+        ax1.scatter(data_crit[i, 1], data_crit[i, 2], s=25, color='blue', label='minima')
+
+
+            #if (data_crit[i, 0] == 3.0):
+        #ax1.scatter(data_crit[i, 1], data_crit[i, 2], s=25, color='blue',label='BP')
+
+
 plt.minorticks_on()
+
 #plt.tight_layout()
 
 L = np.loadtxt('Distances60.dat')

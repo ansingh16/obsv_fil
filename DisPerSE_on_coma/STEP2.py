@@ -71,7 +71,22 @@ lines = fil_file.readlines()
 total_filaments = int(lines[0])
 
 #FINDING CLUSTERS AND GROUPS USING DBSCAN
+import hdbscan
 
+clusterer = hdbscan.HDBSCAN()
+
+clusterer=hdbscan.HDBSCAN(min_cluster_size=20, min_samples=10).fit(file_RADEC_array)
+
+
+#labels = hdbscan.HDBSCAN(min_cluster_size=20, min_samples=10).fit_predict(file_RADEC_array)
+
+labels=clusterer.labels_
+
+prob = clusterer.probabilities_
+
+
+
+'''
 minnum=20
 for r in np.arange(0.1,2.0,0.1):
     fig1,ax1 = plt.subplots(1,1,figsize=(8,6))
@@ -92,12 +107,12 @@ R = np.array(R)
 Num_clus = np.array(Num_clus)
 eps_r = R[np.where(Num_clus==max(Num_clus))][0]
 core_samples, labels, n_clusters_ = clustering(eps_r, minnum)
+'''
 
-
-data_cluster = file_RADEC_array[core_samples]
+data_cluster = file_RADEC_array[labels!=-1,:]
 
 print 'Total shape',save_data_array.shape
-savedata_groups = np.array(save_data_array[core_samples],dtype=np.int32)
+savedata_groups = np.array(save_data_array[labels!=-1,:],dtype=np.int32)
 
 print 'Groups shape',savedata_groups.shape
 #print len(core_samples),file_RADEC_array.shape,savedata_groups.shape,save_data_array.shape
@@ -105,8 +120,8 @@ np.savetxt('Groups_and_clusters.csv',savedata_groups,fmt='%d,%d,%d',header='plat
 
 
 
-data_no_cluster = file_RADEC_array[np.logical_not(core_samples)]
-save_data_filaments = np.array(save_data_array[np.logical_not(core_samples)],dtype=np.int32)
+data_no_cluster = file_RADEC_array[np.logical_not(labels!=-1),:]
+save_data_filaments = np.array(save_data_array[np.logical_not(labels!=-1),:],dtype=np.int32)
 
 print 'Without clusters',data_no_cluster.shape
 
@@ -157,11 +172,13 @@ if my_file.is_file():
 
 filament_out = open('Filament_output.csv','w')
 
-filament_out.write('#plate,mjd,fiberID,RA,Dec,dist(Mpc)\n')
+filament_out.write('#plate,mjd,fiberID,RA,Dec,d_per(Mpc),d_long(Mpc),length_fil(Mpc)\n')
 
 
 all_filament_gal=[]
 all_filament_gal_dist=[]
+all_filament_gal_dist_fil=[]
+all_filament_gal_dist_tot_fil=[]
 
 
 nearest_points_RA=[]
@@ -175,7 +192,7 @@ from shapely.geometry import MultiPoint
 
 for f in range(1,total_filaments+1):
 
-            if(lengths[f-1]>=10.0):
+            if(lengths[f-1]>=0.0):
 
 
 
@@ -197,7 +214,11 @@ for f in range(1,total_filaments+1):
                 near_fil_point = data_fil_ind[indexes]
                 dist_fil = data_dist_gal[indexes]
 
-                d = np.zeros((len(nearby_gal), 1))
+                d_per = np.zeros((len(nearby_gal), 1))
+                d_clus = np.zeros((len(nearby_gal), 1))
+                d_totlen = np.zeros((len(nearby_gal), 1))
+
+
 
 
                 RA_fil = filament_data[:,0]
@@ -226,10 +247,96 @@ for f in range(1,total_filaments+1):
 
 
                     mp = MultiPoint(list1)
-                    a =  nearest_points(mp, p)[0]  # POINT (19.124929 72.89317699999999)
+                    perpen_point =  nearest_points(mp, p)[0] #POINT ON FILAMENT NEAR PERPENDICULAR POINT
+
+
+                    indp= list1.index((perpen_point.x,perpen_point.y))
+
+                    if(indp<(indp-len(list1))):
+
+                        fildist=0.0
+
+                        ra_gal_np = npoint.x * u.degree
+                        dec_gal_np = npoint.y * u.degree
+                        ra_fil_np = perpen_point.x * u.degree
+                        dec_fil_np = perpen_point.y * u.degree
+                        c1 = SkyCoord(ra=ra_gal_np, dec=dec_gal_np, distance=C)
+                        c2 = SkyCoord(ra=ra_fil_np, dec=dec_fil_np, distance=C)
+                        dist1 = c1.separation_3d(c2)
+                        fildist = dist1
+
+                        for m in range(0,indp):
+
+                            ra_along_fil1 = RA_fil[m] * u.degree
+                            dec_along_fil1 = DEC_fil[m] * u.degree
+
+                            ra_along_fil2 = RA_fil[m+1] * u.degree
+                            dec_along_fil2 = DEC_fil[m+1] * u.degree
+
+
+                            c1 = SkyCoord(ra=ra_along_fil1, dec=dec_along_fil1, distance=C)
+                            c2 = SkyCoord(ra=ra_along_fil2, dec=dec_along_fil2, distance=C)
+                            dist1 = c1.separation_3d(c2)
+
+                            fildist+=dist1
+
+
+                    elif(indp>(indp-len(list1))):
+                        fildist = 0.0
+
+                        ra_gal_np = npoint.x * u.degree
+                        dec_gal_np = npoint.y * u.degree
+                        ra_fil_np = perpen_point.x * u.degree
+                        dec_fil_np = perpen_point.y * u.degree
+                        c1 = SkyCoord(ra=ra_gal_np, dec=dec_gal_np, distance=C)
+                        c2 = SkyCoord(ra=ra_fil_np, dec=dec_fil_np, distance=C)
+                        dist1 = c1.separation_3d(c2)
+                        fildist = dist1
+
+                        for m in range(indp,len(list1)-1):
+
+                            ra_along_fil1 = RA_fil[m] * u.degree
+                            dec_along_fil1 = DEC_fil[m] * u.degree
+
+                            ra_along_fil2 = RA_fil[m + 1] * u.degree
+                            dec_along_fil2 = DEC_fil[m + 1] * u.degree
+
+                            c1 = SkyCoord(ra=ra_along_fil1, dec=dec_along_fil1, distance=C)
+                            c2 = SkyCoord(ra=ra_along_fil2, dec=dec_along_fil2, distance=C)
+                            dist1 = c1.separation_3d(c2)
+
+                            fildist += dist1
+
+                    elif (indp == len(list1)/2):
+                        fildist = 0.0
+
+                        ra_gal_np = npoint.x * u.degree
+                        dec_gal_np = npoint.y * u.degree
+                        ra_fil_np = perpen_point.x * u.degree
+                        dec_fil_np = perpen_point.y * u.degree
+                        c1 = SkyCoord(ra=ra_gal_np, dec=dec_gal_np, distance=C)
+                        c2 = SkyCoord(ra=ra_fil_np, dec=dec_fil_np, distance=C)
+                        dist1 = c1.separation_3d(c2)
+                        fildist = dist1
+
+                        for m in range(indp, len(list1) - 1):
+                            ra_along_fil1 = RA_fil[m] * u.degree
+                            dec_along_fil1 = DEC_fil[m] * u.degree
+
+                            ra_along_fil2 = RA_fil[m + 1] * u.degree
+                            dec_along_fil2 = DEC_fil[m + 1] * u.degree
+
+                            c1 = SkyCoord(ra=ra_along_fil1, dec=dec_along_fil1, distance=C)
+                            c2 = SkyCoord(ra=ra_along_fil2, dec=dec_along_fil2, distance=C)
+                            dist1 = c1.separation_3d(c2)
+
+                            fildist += dist1
 
                     
 
+                    d_clus[j,0] = fildist.value
+
+                    d_totlen[j,0] = lengths[f-1]
 
                     ra_fil_nearpoint = npoint.x *u.degree
                     dec_fil_nearpoint = npoint.y * u.degree
@@ -242,7 +349,7 @@ for f in range(1,total_filaments+1):
 
                     #print dist
 
-                    d[j, 0] = dist.value
+                    d_per[j, 0] = dist.value
 
 
                     if (nearby_gal[j] in all_filament_gal):
@@ -251,17 +358,24 @@ for f in range(1,total_filaments+1):
                             continue
                         else:
                             all_filament_gal_dist[ind] = dist.value
+                            all_filament_gal_dist_fil[ind] = fildist.value
+                            all_filament_gal_dist_tot_fil[ind] = lengths[f-1]
+
                             all_filament_gal[ind] = nearby_gal[j]
                     else:
                         all_filament_gal.append(nearby_gal[j])
                         all_filament_gal_dist.append(dist.value)
 
+                        all_filament_gal_dist_fil.append(fildist.value)
+                        all_filament_gal_dist_tot_fil.append(lengths[f-1])
 
 
                 ind = int(lengths[f-1]) / 5
                 # print ind
                 temp = ax2.plot(filament_data[:, 0], filament_data[:, 1], linewidth=1.5, color=s_m.to_rgba(ind))
-                gal = ax2.scatter(data_no_cluster[nearby_gal, 0], data_no_cluster[nearby_gal, 1], c=d[:, 0], s=1.5, cmap='jet')
+                #gal = ax2.scatter(data_no_cluster[nearby_gal, 0], data_no_cluster[nearby_gal, 1], c=d_per[:, 0], s=1.5, cmap='jet')
+
+                gal = ax2.scatter(data_no_cluster[nearby_gal, 0], data_no_cluster[nearby_gal, 1],color='black',alpha=0.7, s=1.5)
 
                 #filament_out.write('[FILAMENT:]'+str(f)+'\n')
 
@@ -282,8 +396,8 @@ np.savetxt(filament_out,np.array([save_data_filaments[all_filament_gal,0],\
                                               save_data_filaments[all_filament_gal,1],\
                                               save_data_filaments[all_filament_gal,2],\
                                               data_no_cluster[all_filament_gal, 0],\
-                                              data_no_cluster[all_filament_gal, 1],all_filament_gal_dist]).T,\
-                       delimiter=',',fmt='%d,%d,%d,%f,%f,%f')
+                                              data_no_cluster[all_filament_gal, 1],all_filament_gal_dist,all_filament_gal_dist_fil,all_filament_gal_dist_tot_fil]).T,\
+                       delimiter=',',fmt='%d,%d,%d,%f,%f,%f,%f,%f')
 
 
 
@@ -320,10 +434,10 @@ tot_data_clipped = pd.DataFrame(tot_dict)
 
 tot_data_clipped.to_csv('Total_galaxies.csv',index=False)
 
-colorbar_ax = fig2.add_axes([0.92, 0.1, 0.01, 0.72])
+#colorbar_ax = fig2.add_axes([0.92, 0.1, 0.01, 0.72])
 #colorbar_ax1 = fig2.add_axes([0.15, 0.02, 0.8, 0.02])
-cbar1 = plt.colorbar(gal,cax=colorbar_ax)
-cbar1.set_label('distance(Mpc)')
+#cbar1 = plt.colorbar(gal,cax=colorbar_ax)
+#cbar1.set_label('distance(Mpc)')
 
 '''
 colorbar_ax1 = fig2.add_axes([0.15, 0.03, 0.72, 0.03])
@@ -333,6 +447,9 @@ cbar2.set_label('Length(Mpc)')
 
 fig2.savefig('FINAL_IMAGE'+'.png',dpi=600)
 
+
+
+#plt.show()
 
 
 
