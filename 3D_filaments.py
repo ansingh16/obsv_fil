@@ -10,7 +10,7 @@ from matplotlib.offsetbox import AnchoredText
 import csv
 
 from matplotlib.widgets import SpanSelector
-mySims		= np.array([('RefL0050N0752', 50.)])
+mySims		= np.array([('RefL0100N1504', 100.)])
 
 # This uses the eagleSqlTools module to connect to the database with your username and password.
 # If the password is not given, the module will prompt for it.
@@ -69,20 +69,20 @@ for sim_name, sim_size in mySims:
     file = "Data_all.dat"
 
 
-    call(['../DisPerSE/bin/delaunay_3D', file, '-btype', 'periodic'])
+    call(['/home/ankit/Python_Environments/EAGLE/DisPerSE/bin/delaunay_3D', file, '-btype', 'periodic'])
 
     NDfile = file + '.NDnet'
 
-    call(['../DisPerSE/bin/mse', NDfile, '-dumpManifolds', 'JE1a', '-upSkl', '-forceLoops','-nsig','3.52'])
+    call(['/home/ankit/Python_Environments/EAGLE/DisPerSE/bin/mse', NDfile,'-upSkl', '-forceLoops','-nsig','3.0'])
 
-    SKLfile = NDfile + '_s3.52.up.NDskl'
+    SKLfile = NDfile + '_s3.up.NDskl'
     # print SKLfile
 
-    call(['../DisPerSE/bin/skelconv', SKLfile, '-smooth', '10', '-to', 'vtp'])
+    call(['/home/ankit/Python_Environments/EAGLE/DisPerSE/bin/skelconv', SKLfile, '-to', 'vtp'])
 
-    call(['../DisPerSE/bin/skelconv', SKLfile, '-smooth', '10', '-to', 'NDskl_ascii'])
+    call(['/home/ankit/Python_Environments/EAGLE/DisPerSE/bin/skelconv', SKLfile, '-to', 'NDskl_ascii'])
 
-    FILAMENT_FILE = SKLfile + '.S010.a.NDskl'
+    FILAMENT_FILE = SKLfile + '.a.NDskl'
 
     with open(FILAMENT_FILE) as infile, open('FILAMENTS' + '.dat', 'w') as outfile:
         copy=False
