@@ -16,7 +16,6 @@ from matplotlib.widgets import SpanSelector
 from checking_random_slicing import get_slice
 
 import pandas as pd
-from STEP1 import RUN_DISPERSE
 #from halotools.mock_observables import return_xyz_formatted_array
 
 from cross_match import cross_matching
@@ -37,7 +36,7 @@ mySims		= np.array([('RefL0100N1504', 100.)])
 # If the password is not given, the module will prompt for it.
 con     	= sql.connect("asingh", password="GFB4ejc2")
 
-'''
+
 
 for sim_name, sim_size in mySims:
 
@@ -135,24 +134,17 @@ for sim_name, sim_size in mySims:
         Data[:, 4] = All_catalogue['R']
 
         np.savetxt("Data_Cluster.csv", Data, header='x,y,z,M,R', delimiter=',')
-'''
+
 #bin_list = np.arange(0.5,max(Data6[:,2]),4.0)
 Data1 = np.loadtxt('Data_xyz_vxyz.csv',delimiter=',')
 
 
-'''
-X = np.array(Data1[:,0])
-Y = np.array(Data1[:,1])
-Z = np.array(Data1[:,2])
-Vz = np.array(Data1[:,5])
-
-pos_rsd = return_xyz_formatted_array(X,Y, Z, period=100.0, velocity=Vz, velocity_distortion_dimension='z')
-np.savetxt('Data_xyz.csv', pos_rsd, header='px py pz', delimiter=',')
-'''
-
 
 data = np.loadtxt('Data_Cluster.csv', delimiter=',', skiprows=1)
 Data = np.loadtxt('Data_all_mass.csv',delimiter=',',skiprows=1)
+
+#Data = np.loadtxt('Test_data.csv',delimiter=',',skiprows=1)
+
 
 from itertools import combinations
 
@@ -203,7 +195,7 @@ for i,j in zip(between1,between2):
 
         origin_shift = (cluster1+cluster2)/2.0
 
-        rad = 4* max(data[i,4],data[j,4])/1000.0
+        rad = 12.0#10* max(data[i,4],data[j,4])/1000.0
 
         dset.attrs['width'] = rad
 
@@ -224,21 +216,42 @@ for i,j in zip(between1,between2):
 
 
 
-        back_array,zl,zu = get_slice(origin_shift,normal,Data[:,0:3].T,rad)
+        DG,DF,DFi,total_Data,zl,zu = get_slice(origin_shift,normal,Data[:,0:3].T,rad,k)
 
+        print "Main shape: ",total_Data.shape,DG.shape,DF.shape,DFi.shape
 
-        RUN_DISPERSE('Clipped.csv')
+        Data_Groups = cross_matching(Data,DG,k)
 
+        Data_Filaments = cross_matching(Data, DF, k)
+        Data_Filaments['d_per'] = DF[:,3]
+        Data_Filaments['d_long'] = DF[:,4]
+        Data_Filaments['d_total'] = DF[:,5]
 
-        SLICED_DATA = cross_matching(Data,back_array,k)
+        Data_Fields = cross_matching(Data, DFi, k)
+
 
 
         #SLICED_DATA.to_csv('./SLICED_DATA/SLICE'+str(k)+'.csv',header=SLICED_DATA.columns)
 
 
-        df_to_nparray = SLICED_DATA.to_records(index=False)
 
-        dset['sliced_data'] = df_to_nparray
+        df_to_nparray = Data_Groups.as_matrix()
+        #dset['Groups'] = df_to_nparray
+
+
+        grpG = dset.create_dataset("Group", data = df_to_nparray , dtype=np.float64)
+        #grpG = df_to_nparray
+
+        df_to_nparray = Data_Filaments.as_matrix()
+        grpF = dset.create_dataset("Filament", data = df_to_nparray, dtype=np.float64)
+
+
+        df_to_nparray = Data_Fields.as_matrix()
+        #dset['Fields'] = df_to_nparray
+
+        grpFi = dset.create_dataset("Field", data = df_to_nparray, dtype=np.float64)
+        #grpFi = df_to_nparray
+
 
         xx, yy = np.meshgrid([float(i) for i in range(100)], [float(i) for i in range(100)])
         fig = plt.figure()
@@ -255,7 +268,7 @@ for i,j in zip(between1,between2):
 
         fig2 = plt.figure()
         ax2 = fig2.add_subplot(111, projection='3d')
-        ax2.scatter(back_array[0,:],back_array[1,:],back_array[2,:],s=2.0)
+        ax2.scatter(total_Data[:,0],total_Data[:,1],total_Data[:,2],s=2.0)
         #ax2.plot_surface(xx, yy, zl, alpha=0.2)
         #ax2.plot_surface(xx, yy, zu, alpha=0.2)
         ax2.set_xlim(0.0,100.0)
@@ -267,6 +280,10 @@ for i,j in zip(between1,between2):
 
         #plt.show()
         #break
+
+        print "Main loop ",k
+
+        call(['rm', 'filament_*'])
 
         k=k+1
 

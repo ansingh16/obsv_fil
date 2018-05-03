@@ -101,7 +101,7 @@ def RUN_DISPERSE(file):
 
 	for f in range(1,int(lines[0])+1):
 		file = 'filament_' + str(f) + '.dat'
-		print file
+		#print file
 		data = np.genfromtxt(file,delimiter=' ')
 		#plt.plot(data[:,0],data[:,1])
 		#print file
