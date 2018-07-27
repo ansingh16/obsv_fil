@@ -52,5 +52,9 @@ plt.xlabel('Lenth(Mpc)')
 plt.legend()
 plt.savefig('Angle_historgram_line.png',dpi=600)
 
+
+
+
+
 plt.show()
 
